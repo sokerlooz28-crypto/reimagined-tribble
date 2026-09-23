@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>نظام المستويات</title>
+<style>
+:root{--bg:#070b12;--card:#101722;--line:#283445;--gold:#e8b85b;--text:#f4f1ea;--muted:#aeb8c7;--accent:#4fc3f7}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#172235 0,#070b12 48%,#04060a 100%);color:var(--text);font-family:Tahoma,Arial,sans-serif;min-height:100vh}
+.wrap{max-width:1000px;margin:auto;padding:28px 16px 50px}
+header{text-align:center;margin-bottom:22px}header .crown{font-size:42px}h1{margin:4px 0 5px;font-size:38px;color:#f3dfb9}header p{margin:0;color:var(--muted)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:20px 0}
+button{border:1px solid #4a5668;background:#151e2b;color:#fff;border-radius:10px;padding:10px 15px;cursor:pointer;font-weight:700}
+button:hover{border-color:var(--gold);transform:translateY(-1px)}.primary{background:#8c641d;border-color:#c99943}.danger{background:#35151a;border-color:#71313b}
+.panel{background:rgba(12,18,28,.88);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:13px;box-shadow:0 10px 35px #0006}
+.row{display:grid;grid-template-columns:78px 1fr 1fr auto;gap:12px;align-items:center}
+.badge{width:64px;height:64px;border:2px solid #59687c;border-radius:16px;display:grid;place-items:center;font-size:27px;font-weight:900;background:linear-gradient(145deg,#273449,#0e141d)}
+label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px}input{width:100%;padding:11px;border-radius:9px;border:1px solid #344154;background:#080d14;color:#fff;font-size:16px;outline:none}input:focus{border-color:var(--gold)}
+.xp{color:var(--gold);font-weight:800;font-size:14px;margin-top:7px}.bar{height:9px;background:#070b10;border:1px solid #334052;border-radius:20px;overflow:hidden;margin-top:8px}.fill{height:100%;background:linear-gradient(90deg,#4aa9e8,#dcb15d);border-radius:20px;transition:.25s}
+.controls{display:flex;gap:6px}.controls button{padding:8px 10px}
+.add{width:100%;margin-top:5px;border-style:dashed}.footer{text-align:center;color:#7f8a9a;margin-top:20px;font-size:13px}
+@media(max-width:700px){.row{grid-template-columns:58px 1fr;}.badge{width:52px;height:52px;font-size:22px}.row>div:nth-child(3){grid-column:2}.controls{grid-column:2}.wrap{padding:20px 10px}h1{font-size:30px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div class="crown">♛</div><h1>نظام المستويات</h1><p>عدّل المستويات ونقاط الخبرة مثل ما تريد — والحفظ يصير تلقائياً على جهازك.</p></header>
+
+<div class="toolbar">
+<button class="primary" onclick="addLevel()">＋ إضافة مستوى</button>
+<button onclick="saveData()">💾 حفظ</button>
+<button onclick="resetData()">↺ إعادة الإعدادات</button>
+</div>
+
+<div id="levels"></div>
+<button class="add" onclick="addLevel()">＋ إضافة مستوى جديد</button>
+<div class="footer">البيانات محفوظة محلياً في هذا المتصفح.</div>
+</div>
+
+<script>
+const defaultLevels=[
+["المبتدئ",0],["المتعلم",50],["المجتهد",100],["المحترف",200],["البطل",300],
+["الأسطورة",450],["الخبير",600],["القائد",750],["الأسطوري",850],["الماستر",950]
+];
+let levels=JSON.parse(localStorage.getItem("rpgLevels")||"null")||defaultLevels.map(x=>({name:x[0],xp:x[1]}));
+
+function render(){
+ const box=document.getElementById("levels"); box.innerHTML="";
+ levels.forEach((l,i)=>{
+   const next=levels[i+1]?.xp ?? 1000;
+   const prev=l.xp;
+   const width=Math.max(0,Math.min(100,(next>prev?((next-prev)*100/(next-prev)):0)));
+   box.insertAdjacentHTML("beforeend",`
+   <section class="panel">
+    <div class="row">
+      <div class="badge">${i+1}</div>
+      <div>
+        <label>اسم المستوى</label>
+        <input value="${esc(l.name)}" oninput="levels[${i}].name=this.value;saveData(false)">
+      </div>
+      <div>
+        <label>نقاط الخبرة المطلوبة للوصول</label>
+        <input type="number" min="0" max="1000000" value="${l.xp}" oninput="levels[${i}].xp=Math.max(0,+this.value||0);saveData(false);render()">
+        <div class="xp">${l.xp} XP ${next>l.xp?"→ "+next+" XP":""}</div>
+        <div class="bar"><div class="fill" style="width:${i===levels.length-1?100:50}%"></div></div>
+      </div>
+      <div class="controls">
+        <button onclick="changeXP(${i},-10)">−10</button>
+        <button onclick="changeXP(${i},10)">+10</button>
+        <button class="danger" onclick="removeLevel(${i})">حذف</button>
+      </div>
+    </div>
+   </section>`);
+ });
+}
+function changeXP(i,n){levels[i].xp=Math.max(0,levels[i].xp+n);saveData();render()}
+function addLevel(){let last=levels[levels.length-1]?.xp||0;levels.push({name:"مستوى جديد",xp:last+50});saveData();render()}
+function removeLevel(i){if(levels.length<=1)return;levels.splice(i,1);saveData();render()}
+function saveData(show=true){localStorage.setItem("rpgLevels",JSON.stringify(levels));if(show)alert("تم الحفظ ✅")}
+function resetData(){if(confirm("ترجع المستويات للإعدادات الأصلية؟")){levels=defaultLevels.map(x=>({name:x[0],xp:x[1]}));saveData();render()}}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+render();
+</script>
+</body>
+</html>
